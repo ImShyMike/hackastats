@@ -13,6 +13,8 @@
 	let spans: Spans | null = $state(null);
 	let heatmapData: Array<{ date: string; value: number }> = $state([]);
 	let heatmapSeries: Array<{ name: string; data: Array<{ x: string; y: number }> }> = $state([]);
+	let chartData: number[] = $state(Array(24).fill(0));
+	let selectedDay: string | null = $state(null);
 
 	let loading = $state(true);
 	let error: string | null = $state(null);
@@ -34,7 +36,7 @@
 		'var(--color-maroon)'
 	];
 
-	let chartOptions = $state({
+	let chartOptions = $derived({
 		chart: {
 			type: 'pie',
 			height: 400,
@@ -163,12 +165,170 @@
 		]
 	});
 
+	let hourlyChartOptions = $derived.by(() => ({
+		chart: {
+			type: 'bar',
+			height: 400,
+			width: '100%',
+			background: 'transparent',
+			foreColor: 'var(--color-text)',
+			fontFamily: 'inherit',
+			toolbar: {
+				show: false
+			}
+		},
+		colors: ['var(--color-blue)'],
+		series: [
+			{
+				name: 'Activity Hours',
+				data: [...chartData]
+			}
+		],
+		plotOptions: {
+			bar: {
+				horizontal: false,
+				columnWidth: '60%',
+				borderRadius: 4,
+				borderRadiusApplication: 'end',
+				borderRadiusWhenStacked: 'last'
+			}
+		},
+		dataLabels: {
+			enabled: false
+		},
+		stroke: {
+			show: true,
+			width: 1,
+			colors: ['var(--color-surface1)']
+		},
+		xaxis: {
+			type: 'category',
+			categories: Array.from({ length: 24 }, (_, i) => (i + 1).toString()),
+			labels: {
+				style: {
+					colors: 'var(--color-text)',
+					fontSize: '12px',
+					fontFamily: 'inherit'
+				},
+				rotate: 0
+			},
+			axisBorder: {
+				show: true,
+				color: 'var(--color-surface1)'
+			},
+			axisTicks: {
+				show: true,
+				color: 'var(--color-surface1)'
+			}
+		},
+		yaxis: {
+			title: {
+				text: 'Hours',
+				style: {
+					color: 'var(--color-text)',
+					fontSize: '14px',
+					fontFamily: 'inherit',
+					fontWeight: 600
+				}
+			},
+			labels: {
+				style: {
+					colors: 'var(--color-text)',
+					fontSize: '12px',
+					fontFamily: 'inherit'
+				},
+				formatter: function (val: number) {
+					return val.toFixed(1) + 'h';
+				}
+			}
+		},
+		grid: {
+			show: true,
+			borderColor: 'var(--color-surface1)',
+			strokeDashArray: 3,
+			position: 'back',
+			xaxis: {
+				lines: {
+					show: true
+				}
+			},
+			yaxis: {
+				lines: {
+					show: true
+				}
+			}
+		},
+		tooltip: {
+			theme: 'dark',
+			style: {
+				fontSize: '12px',
+				fontFamily: 'inherit'
+			},
+			custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
+				const value = series[seriesIndex][dataPointIndex];
+				const hour = w.globals.labels[dataPointIndex];
+				const time = humanTime(value * 3600);
+
+				return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
+						<div style="margin-bottom: 4px;">
+							<strong style="color: var(--color-text);">${hour}</strong>
+						</div>
+						<span style="color: var(--color-text);">${time} hours</span>
+					</div>`;
+			}
+		},
+		responsive: [
+			{
+				breakpoint: 768,
+				options: {
+					chart: {
+						height: 300
+					},
+					plotOptions: {
+						bar: {
+							columnWidth: '80%'
+						}
+					},
+					xaxis: {
+						labels: {
+							rotate: -90
+						}
+					}
+				}
+			},
+			{
+				breakpoint: 480,
+				options: {
+					chart: {
+						height: 250
+					},
+					plotOptions: {
+						bar: {
+							columnWidth: '90%'
+						}
+					}
+				}
+			}
+		]
+	}));
+
 	let heatmapOptions = $derived({
 		chart: {
 			type: 'heatmap',
 			height: 400,
 			background: 'transparent',
-			fontFamily: 'inherit'
+			fontFamily: 'inherit',
+			events: {
+				dataPointSelection: function (event: any, chartContext: any, config: any) {
+					const { seriesIndex, dataPointIndex } = config;
+					const monthName = heatmapSeries[seriesIndex]?.name;
+					const dayData = heatmapSeries[seriesIndex]?.data[dataPointIndex];
+					const day = dayData?.x;
+					const value = dayData?.y;
+
+					handleHeatmapClick(monthName, day, value);
+				}
+			}
 		},
 		colors: ['var(--color-green)'],
 		series: heatmapSeries,
@@ -188,9 +348,9 @@
 				useFillColorAsStroke: false,
 				colorScale: {
 					ranges: [
-						{ from: 0.0, to: 0.01, color: colorVarToHex('--color-surface0'), name: 'No Activity' },
+						{ from: 0.0, to: 1, color: colorVarToHex('--color-surface0'), name: 'No Activity' },
 						{
-							from: 0.01 * 3600,
+							from: 1,
 							to: 0.5 * 3600,
 							color: colorVarToHex('--color-teal'),
 							name: 'Low'
@@ -265,12 +425,106 @@
 	function humanTime(seconds: number): string {
 		const hrs = Math.floor(seconds / 3600);
 		const mins = Math.floor((seconds % 3600) / 60);
-		if (hrs === 0 && mins === 0) {
+		if (seconds === 0) {
+			return '0s';
+		} else if (hrs === 0 && mins === 0) {
 			return '<1m';
 		} else if (hrs === 0) {
 			return `${mins}m`;
 		}
 		return `${hrs}h ${mins}m`;
+	}
+
+	function splitSpanAcrossHours(span: { start_time: number; end_time: number; duration: number }) {
+		const startDate = new Date(span.start_time * 1000);
+		const endDate = new Date(span.end_time * 1000);
+
+		// If span is within the same hour, return as is
+		if (
+			startDate.getHours() === endDate.getHours() &&
+			startDate.getDate() === endDate.getDate() &&
+			startDate.getMonth() === endDate.getMonth() &&
+			startDate.getFullYear() === endDate.getFullYear()
+		) {
+			return [{ hour: startDate.getHours(), duration: span.duration }];
+		}
+
+		const hourSegments: Array<{ hour: number; duration: number }> = [];
+
+		// Start from the beginning of the span
+		let currentTime = span.start_time;
+		const endTime = span.end_time;
+
+		while (currentTime < endTime) {
+			const currentDate = new Date(currentTime * 1000);
+			const currentHour = currentDate.getHours();
+
+			// Calculate the end of the current hour
+			const endOfHour = new Date(currentDate);
+			endOfHour.setHours(currentHour + 1, 0, 0, 0);
+			const endOfHourTimestamp = endOfHour.getTime() / 1000;
+
+			// The segment ends at either the end of the hour or the end of the span
+			const segmentEndTime = Math.min(endOfHourTimestamp, endTime);
+			const segmentDuration = segmentEndTime - currentTime;
+
+			if (segmentDuration > 0) {
+				hourSegments.push({ hour: currentHour, duration: segmentDuration });
+			}
+
+			// Move to the start of the next hour
+			currentTime = segmentEndTime;
+		}
+
+		return hourSegments;
+	}
+
+	function handleHeatmapClick(monthName: string, day: string, value: number) {
+		selectedDay = `${monthName}, Day ${day}`;
+
+		const daySpans =
+			spans?.spans.filter((span) => {
+				const spanDate = new Date(span.start_time * 1000);
+				const spanDay = spanDate.getDate().toString();
+				const spanMonth = spanDate.toLocaleDateString('en-US', { month: 'short' });
+				const spanYear = spanDate.getFullYear().toString();
+				return (
+					spanDay === day &&
+					spanMonth === monthName.split(' ')[0] &&
+					spanYear === monthName.split(' ')[1]
+				);
+			}) || [];
+
+		// Initialize hour buckets
+		const hourlyDurations = Array(24).fill(0);
+
+		// Split each span across hours and accumulate durations
+		daySpans.forEach((span) => {
+			const hourSegments = splitSpanAcrossHours(span);
+			hourSegments.forEach((segment) => {
+				if (segment.hour >= 0 && segment.hour < 24) {
+					hourlyDurations[segment.hour] += segment.duration / 3600;
+				}
+			});
+		});
+
+		if (hourlyDurations.reduce((a, b) => a + b, 0) === 0) {
+			selectedDay = null;
+			chartData = Array(24).fill(0);
+			return;
+		}
+
+		chartData = hourlyDurations;
+
+		// Scroll to the graph
+		if (browser) {
+			setTimeout(() => {
+				window.scrollTo({
+					top: document.body.scrollHeight,
+					behavior: 'smooth'
+				});
+			}, 100);
+		}
 	}
 
 	function colorVarToHex(colorVar: string): string {
@@ -418,7 +672,7 @@
 <div class="min-h-screen bg-base text-text">
 	<div class="container mx-auto px-4 py-8">
 		<div class="mb-8 text-center">
-			<h1 class="mb-2 text-3xl font-bold text-text"><a href="/">Hackastats</a></h1>
+			<h1 class="mb-2 text-3xl font-bold text-text"><a href="/">Hacka<span class="text-pink">stats</span></a></h1>
 			<p class="text-subtext1">
 				Displaying data for user: <strong class="text-text">{user}</strong>
 			</p>
@@ -433,9 +687,15 @@
 							? getTrustLevelColor(stats.trust_factor.trust_value)
 							: 'blue'});"
 					></span>
-					<h2 class="text-xl font-semibold text-text">
-						{stats ? stats.data.username : 'Loading...'}
-					</h2>
+					{#if isNaN(parseInt(user!))}
+						<h2 class="text-xl font-semibold text-text">
+							{stats ? stats.data.username : 'Loading...'} <span class="text-subtext0">({stats ? stats.data.user_id : "..."})</span>
+						</h2>
+					{:else}
+						<h2 class="text-xl font-semibold text-text">
+							{stats ? stats.data.username : 'Loading...'}
+						</h2>
+					{/if}
 				</div>
 
 				<div>
@@ -475,7 +735,32 @@
 						</div>
 					{:else if heatmapSeries.length > 0}
 						<h3 class="mb-4 text-xl font-semibold text-text">Activity Heatmap</h3>
-						<div class="h-96 w-full latte" use:chart={heatmapOptions}></div>
+						<div class="latte h-96 w-full" use:chart={heatmapOptions}></div>
+					{/if}
+				</div>
+			{/if}
+
+			{#if !error}
+				<div
+					class="mt-8 rounded-xl border border-surface1 bg-surface0/50 p-6 shadow-lg"
+					style="min-height: 500px;"
+				>
+					{#if loading}
+						<div class="flex h-96 flex-col items-center justify-center">
+							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue"></div>
+							<p class="text-subtext1">Loading data...</p>
+						</div>
+					{:else if selectedDay}
+						<h3 class="mb-4 text-xl font-semibold text-text">{selectedDay}</h3>
+						{#key chartData}
+							<div class="latte h-96 w-full" use:chart={hourlyChartOptions}></div>
+						{/key}
+					{:else}
+						<div class="flex h-96 items-center justify-center">
+							<p class="text-subtext1">
+								Click on a day in the heatmap above to view hourly activity
+							</p>
+						</div>
 					{/if}
 				</div>
 			{/if}

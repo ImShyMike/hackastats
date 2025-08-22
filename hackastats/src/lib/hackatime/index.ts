@@ -67,7 +67,7 @@ async function getJson(url: string): Promise<unknown> {
 		})
 		.catch((error) => {
 			console.error('Error fetching JSON:', error);
-			throw error;
+			return null;
 		});
 }
 
