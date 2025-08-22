@@ -238,7 +238,7 @@
 					fontFamily: 'inherit'
 				},
 				formatter: function (val: number) {
-					return val.toFixed(1) + 'h';
+					return (val * 60).toFixed() + 'm';
 				}
 			}
 		},
@@ -271,9 +271,9 @@
 
 				return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
 						<div style="margin-bottom: 4px;">
-							<strong style="color: var(--color-text);">${hour}</strong>
+							<strong style="color: var(--color-text);">${hour.toString().padStart(2, '0')}:00</strong>
 						</div>
-						<span style="color: var(--color-text);">${time} hours</span>
+						<span style="color: var(--color-text);">${time}</span>
 					</div>`;
 			}
 		},
@@ -509,7 +509,6 @@
 		});
 
 		if (hourlyDurations.reduce((a, b) => a + b, 0) === 0) {
-			selectedDay = null;
 			chartData = Array(24).fill(0);
 			return;
 		}
@@ -751,10 +750,19 @@
 							<p class="text-subtext1">Loading data...</p>
 						</div>
 					{:else if selectedDay}
-						<h3 class="mb-4 text-xl font-semibold text-text">{selectedDay}</h3>
-						{#key chartData}
-							<div class="latte h-96 w-full" use:chart={hourlyChartOptions}></div>
-						{/key}
+						{#if (chartData.reduce((a, b) => a + b, 0) === 0)}
+							<h3 class="mb-4 text-xl font-semibold text-text">{selectedDay}</h3>
+							<div class="flex h-96 items-center justify-center">
+								<p class="text-subtext1">
+									No data available to display
+								</p>
+							</div>
+						{:else}
+							<h3 class="mb-4 text-xl font-semibold text-text">{selectedDay}</h3>
+							{#key chartData}
+								<div class="latte h-96 w-full" use:chart={hourlyChartOptions}></div>
+							{/key}
+						{/if}
 					{:else}
 						<div class="flex h-96 items-center justify-center">
 							<p class="text-subtext1">
