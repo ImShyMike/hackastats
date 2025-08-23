@@ -3,7 +3,7 @@
 	import { getTrustLevelColor } from '$lib/utils';
 
 	let debounceTimer: number | null = null;
-	let cachedTypeHints: Record<string, {hint: string, trustLevel: number}> = {};
+	let cachedTypeHints: Record<string, { hint: string; trustLevel: number }> = {};
 	let hintText = '...';
 	let userTrustLevel = -1;
 
@@ -56,10 +56,12 @@
 						}
 
 						debounceTimer = setTimeout(async () => {
-							await userTypeHint(userInput, cachedTypeHints).then(({ hint, trustLevel }: { hint: string; trustLevel: number }) => {
-								hintText = hint;
-								userTrustLevel = trustLevel;
-							});
+							await userTypeHint(userInput, cachedTypeHints).then(
+								({ hint, trustLevel }: { hint: string; trustLevel: number }) => {
+									hintText = hint;
+									userTrustLevel = trustLevel;
+								}
+							);
 						}, 500);
 					}}
 					placeholder="user/slack id here..."

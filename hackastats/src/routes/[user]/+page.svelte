@@ -23,11 +23,11 @@
 	let projectData: Array<{ name: string; total_seconds: number }> = $state([]);
 	let selectedDay: string | null = $state(null);
 
-	let loading = $state(true);
+	let loading = $state({ pieChart: true, projectChart: true, heatmap: true });
 	let error: string | null = $state(null);
 
 	let debounceTimer: number | null = null;
-	let cachedTypeHints: Record<string, {hint: string, trustLevel: number}> = {};
+	let cachedTypeHints: Record<string, { hint: string; trustLevel: number }> = {};
 	let hintText = $state('...');
 	let userTrustLevel = $state(-1);
 
@@ -193,7 +193,7 @@
 		series: [
 			{
 				name: 'Hours',
-				data: projectData.map(p => p.total_seconds / 3600).slice(0, 10)
+				data: projectData.map((p) => p.total_seconds / 3600).slice(0, 10)
 			}
 		],
 		plotOptions: {
@@ -235,7 +235,7 @@
 				}
 			},
 			type: 'category',
-			categories: projectData.map(p => p.name).slice(0, 10),
+			categories: projectData.map((p) => p.name).slice(0, 10),
 			labels: {
 				style: {
 					colors: 'var(--color-text)',
@@ -318,7 +318,7 @@
 						bar: {
 							columnWidth: '80%'
 						}
-					},
+					}
 				}
 			},
 			{
@@ -684,33 +684,14 @@
 		}
 	}
 
-	onMount(async () => {
-		if (!user) {
-			error = 'User parameter is missing';
-			loading = false;
-			return;
-		}
-
+	async function loadPieChart(user: string, tenYearsAgo: Date, now: Date) {
 		try {
-			const now = new Date();
-			const tenYearsAgo = new Date();
-			tenYearsAgo.setFullYear(now.getFullYear() - 10);
-
 			const userData = await getUserStats(user, 10, 'languages', tenYearsAgo, now);
-			const userProjectsData = await getUserStats(user, 10, 'projects', tenYearsAgo, now);
-			const userSpans = await getUserSpans(user);
-			spans = userSpans;
 			stats = userData;
-			projectsStats = userProjectsData;
-
-			if (spans && spans.spans.length > 0) {
-				heatmapData = parseSpansForHeatmap(spans);
-				heatmapSeries = createHeatmapSeries(heatmapData);
-			}
 
 			if (!stats?.data?.languages) {
 				error = `No language data found for user: ${user}`;
-				loading = false;
+				loading.pieChart = false;
 				return;
 			}
 
@@ -718,17 +699,67 @@
 
 			chartOptions.series = languageData.map((lang) => lang.total_seconds);
 			chartOptions.labels = languageData.map((lang) => lang.name);
-
-			projectData = projectsStats.data.projects
-				? Object.values(projectsStats.data.projects).sort((a, b) => b.total_seconds - a.total_seconds)
-				: [];
-
-			loading = false;
 		} catch (err) {
 			console.error('Error fetching user stats:', err);
 			error = `Failed to fetch data for user: ${user}`;
-			loading = false;
+		} finally {
+			loading.pieChart = false;
 		}
+	}
+
+	async function loadProjectChart(user: string, tenYearsAgo: Date, now: Date) {
+		try {
+			const userProjectsData = await getUserStats(user, 10, 'projects', tenYearsAgo, now);
+			projectsStats = userProjectsData;
+
+			projectData = projectsStats.data.projects
+				? Object.values(projectsStats.data.projects).sort(
+						(a, b) => b.total_seconds - a.total_seconds
+					)
+				: [];
+		} catch (err) {
+			console.error('Error fetching user projects:', err);
+			error = `Failed to fetch projects for user: ${user}`;
+		} finally {
+			loading.projectChart = false;
+		}
+	}
+
+	async function loadSpans(user: string) {
+		try {
+			const userSpans = await getUserSpans(user);
+			spans = userSpans;
+
+			if (spans && spans.spans.length > 0) {
+				heatmapData = parseSpansForHeatmap(spans);
+				heatmapSeries = createHeatmapSeries(heatmapData);
+			} else {
+				error = `No span data found for user: ${user}`;
+			}
+		} catch (err) {
+			console.error('Error fetching user spans:', err);
+			error = `Failed to fetch spans for user: ${user}`;
+		} finally {
+			loading.heatmap = false;
+		}
+	}
+
+	onMount(async () => {
+		if (!user) {
+			error = 'User parameter is missing';
+			loading.pieChart = false;
+			loading.projectChart = false;
+			loading.heatmap = false;
+			return;
+		}
+
+		const now = new Date();
+		const tenYearsAgo = new Date();
+		tenYearsAgo.setFullYear(now.getFullYear() - 10);
+
+		loadPieChart(user, tenYearsAgo, now);
+		loadProjectChart(user, tenYearsAgo, now);
+		loadSpans(user);
 	});
 </script>
 
@@ -747,7 +778,7 @@
 					onblur={() => {
 						hintText = '...';
 						if (userElement) {
-							userElement.textContent = user ? user : '' ;
+							userElement.textContent = user ? user : '';
 						}
 					}}
 					onkeypress={(e) => {
@@ -778,10 +809,12 @@
 						}
 
 						debounceTimer = setTimeout(async () => {
-							await userTypeHint(userInput, cachedTypeHints).then(({ hint, trustLevel }: { hint: string; trustLevel: number }) => {
-								hintText = hint;
-								userTrustLevel = trustLevel;
-							});
+							await userTypeHint(userInput, cachedTypeHints).then(
+								({ hint, trustLevel }: { hint: string; trustLevel: number }) => {
+									hintText = hint;
+									userTrustLevel = trustLevel;
+								}
+							);
 						}, 500);
 					}}
 					contenteditable
@@ -790,8 +823,10 @@
 			</p>
 
 			{#if hintText !== '...'}
-				<div class="relative flex justify-center w-full" style="z-index:10;">
-					<div class="absolute left-1/2 -translate-x-1/2 top-0 w-max max-w-xs rounded-lg border border-surface1 bg-base px-3 py-2 shadow-lg">
+				<div class="relative flex w-full justify-center" style="z-index:10;">
+					<div
+						class="absolute top-0 left-1/2 w-max max-w-xs -translate-x-1/2 rounded-lg border border-surface1 bg-base px-3 py-2 shadow-lg"
+					>
 						<span
 							class="mr-1 inline-block h-6 w-6 rounded-full border-2 border-surface2 align-middle"
 							style="background: var(--color-{getTrustLevelColor(userTrustLevel)});"
@@ -829,7 +864,7 @@
 					</p>
 				</div>
 
-				{#if loading}
+				{#if loading.pieChart}
 					<div class="flex h-96 flex-col items-center justify-center">
 						<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue"></div>
 						<p class="text-subtext1">Loading chart data...</p>
@@ -853,7 +888,7 @@
 
 			{#if !error}
 				<div class="mt-8 rounded-xl border border-surface1 bg-surface0/50 p-6 shadow-lg">
-					{#if loading}
+					{#if loading.projectChart}
 						<div class="flex h-96 flex-col items-center justify-center">
 							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-green"></div>
 							<p class="text-subtext1">Loading project data...</p>
@@ -866,7 +901,7 @@
 						</div>
 					{:else}
 						{#key projectChartOptions}
-							<div class="h-96 w-full overwrite-min-height" use:chart={projectChartOptions}></div>
+							<div class="overwrite-min-height h-96 w-full" use:chart={projectChartOptions}></div>
 						{/key}
 					{/if}
 				</div>
@@ -874,7 +909,7 @@
 
 			{#if !error}
 				<div class="mt-8 rounded-xl border border-surface1 bg-surface0/50 p-6 shadow-lg">
-					{#if loading}
+					{#if loading.heatmap}
 						<div class="flex h-96 flex-col items-center justify-center">
 							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-sky"></div>
 							<p class="text-subtext1">Loading heatmap data...</p>
@@ -891,7 +926,7 @@
 					class="mt-8 rounded-xl border border-surface1 bg-surface0/50 p-6 shadow-lg"
 					style="min-height: 500px;"
 				>
-					{#if loading}
+					{#if loading.heatmap}
 						<div class="flex h-96 flex-col items-center justify-center">
 							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-mauve"></div>
 							<p class="text-subtext1">Loading daily data...</p>
@@ -905,7 +940,7 @@
 						{:else}
 							<h3 class="mb-4 text-xl font-semibold text-text">{selectedDay}</h3>
 							{#key chartData}
-								<div class="h-96 w-full overwrite-min-height" use:chart={hourlyChartOptions}></div>
+								<div class="overwrite-min-height h-96 w-full" use:chart={hourlyChartOptions}></div>
 							{/key}
 						{/if}
 					{:else}

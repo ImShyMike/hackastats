@@ -89,8 +89,8 @@ export async function getUserSpans(user: string | number): Promise<Spans> {
 
 export async function userTypeHint(
 	input: string,
-	cachedTypeHints: Record<string, {hint: string, trustLevel: number}>
-): Promise<{hint: string, trustLevel: number}> {
+	cachedTypeHints: Record<string, { hint: string; trustLevel: number }>
+): Promise<{ hint: string; trustLevel: number }> {
 	if (cachedTypeHints[input]) {
 		const { hint, trustLevel } = cachedTypeHints[input];
 		return { hint, trustLevel };
