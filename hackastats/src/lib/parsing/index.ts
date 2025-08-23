@@ -43,15 +43,18 @@ export function createHeatmapSeries(data: Array<{ date: string; value: number }>
 		groupedData.get(monthKey)!.set(day, item.value);
 	});
 
+	const currentMonth = new Date().getMonth();
+	const currentDay = new Date().getDate();
+
 	// Convert to ApexCharts series format and add filler days
 	const series = Array.from(groupedData.entries())
 		.sort(([a], [b]) => {
-			// Sort months chronologically
+			// Sort months inverse chronologically
 			const [monthA, yearA] = a.split(' ');
 			const [monthB, yearB] = b.split(' ');
 			const dateA = new Date(`${monthA} 1, ${yearA}`);
 			const dateB = new Date(`${monthB} 1, ${yearB}`);
-			return dateA.getTime() - dateB.getTime();
+			return dateB.getTime() - dateA.getTime();
 		})
 		.map(([monthKey, dayMap]) => {
 			// Parse the month to get year and month number
@@ -66,7 +69,10 @@ export function createHeatmapSeries(data: Array<{ date: string; value: number }>
 			// Create array with all days of the month
 			const dayData: Array<{ x: string; y: number }> = [];
 
-			for (let day = 1; day <= daysInMonth; day++) {
+			// If it's the current month, only include up to the current day
+			const maxDay = month === currentMonth ? currentDay : daysInMonth;
+
+			for (let day = 1; day <= maxDay; day++) {
 				const value = dayMap.get(day) || 0;
 				dayData.push({
 					x: `${day}`,

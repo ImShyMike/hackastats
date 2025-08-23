@@ -811,7 +811,8 @@
 			}
 		});
 	}
-	function handleHeatmapClick(monthName: string, day: string, value: number) {
+
+	async function parseDaySpecificData(monthName: string, day: string) {
 		selectedDay = `${monthName}, Day ${day}`;
 
 		const daySpans =
@@ -846,19 +847,14 @@
 		}
 
 		chartData = hourlyDurations;
+	}
+
+	function handleHeatmapClick(monthName: string, day: string, value: number) {
+		// Parse and display data for the selected day
+		parseDaySpecificData(monthName, day);
 
 		// Get projects for that day
 		getProjectsForDay(monthName, day);
-
-		// Scroll to the graphs
-		if (browser) {
-			setTimeout(() => {
-				window.scrollTo({
-					top: document.body.scrollHeight,
-					behavior: 'smooth'
-				});
-			}, 100);
-		}
 	}
 
 	function colorVarToHex(colorVar: string): string {
@@ -1138,7 +1134,10 @@
 							{#key chartData}
 								<div class="overwrite-min-height h-96 w-full" use:chart={hourlyChartOptions}></div>
 
-								<div class="overwrite-min-height h-96 w-full" use:chart={dailyProjectChartOptions}></div>
+								<div
+									class="overwrite-min-height h-96 w-full"
+									use:chart={dailyProjectChartOptions}
+								></div>
 							{/key}
 						{/if}
 					{:else}
