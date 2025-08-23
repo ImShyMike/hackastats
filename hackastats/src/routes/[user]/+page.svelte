@@ -24,8 +24,9 @@
 	let error: string | null = $state(null);
 
 	let debounceTimer: number | null = null;
-	let cachedNames: Record<string, string> = {};
+	let cachedTypeHints: Record<string, {hint: string, trustLevel: number}> = {};
 	let hintText = $state('...');
+	let userTrustLevel = $state(-1);
 
 	const catppuccinColors = [
 		'var(--color-red)',
@@ -553,6 +554,9 @@
 					role="textbox"
 					onblur={() => {
 						hintText = '...';
+						if (userElement) {
+							userElement.textContent = user ? user : '' ;
+						}
 					}}
 					onkeypress={(e) => {
 						if (e.key === 'Enter') {
@@ -566,12 +570,14 @@
 
 						if (userInput.trim() === '') {
 							hintText = '...';
+							userTrustLevel = -1;
 							return;
 						}
 
-						if (cachedNames[userInput]) {
-							const hint = cachedNames[userInput];
+						if (cachedTypeHints[userInput]) {
+							const { hint, trustLevel } = cachedTypeHints[userInput];
 							hintText = hint;
+							userTrustLevel = trustLevel;
 							return;
 						}
 
@@ -580,8 +586,9 @@
 						}
 
 						debounceTimer = setTimeout(async () => {
-							await userTypeHint(userInput, cachedNames).then((hint) => {
+							await userTypeHint(userInput, cachedTypeHints).then(({ hint, trustLevel }: { hint: string; trustLevel: number }) => {
 								hintText = hint;
+								userTrustLevel = trustLevel;
 							});
 						}, 500);
 					}}
@@ -593,6 +600,10 @@
 			{#if hintText !== '...'}
 				<div class="relative flex justify-center w-full" style="z-index:10;">
 					<div class="absolute left-1/2 -translate-x-1/2 top-0 w-max max-w-xs rounded-lg border border-surface1 bg-base px-3 py-2 shadow-lg">
+						<span
+							class="mr-1 inline-block h-6 w-6 rounded-full border-2 border-surface2 align-middle"
+							style="background: var(--color-{getTrustLevelColor(userTrustLevel)});"
+						></span>
 						<span class="text-sm text-text">{hintText}</span>
 					</div>
 				</div>
@@ -606,7 +617,7 @@
 						class="mr-2 inline-block h-6 w-6 rounded-full border-2 border-surface2 align-middle"
 						style="background: var(--color-{stats
 							? getTrustLevelColor(stats.trust_factor.trust_value)
-							: 'blue'});"
+							: 'overlay0'});"
 					></span>
 					{#if isNaN(parseInt(user!))}
 						<h2 class="text-xl font-semibold text-text">

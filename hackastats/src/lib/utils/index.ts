@@ -1,8 +1,9 @@
 export function getTrustLevelColor(trustValue: number): string {
+	if (trustValue == 0) return 'blue';
 	if (trustValue == 1) return 'yellow';
 	if (trustValue == 2) return 'green';
 	if (trustValue == 3) return 'red';
-	return 'blue';
+	return 'overlay0';
 }
 
 export function humanTime(seconds: number): string {

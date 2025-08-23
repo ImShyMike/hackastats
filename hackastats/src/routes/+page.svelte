@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { userTypeHint } from '$lib/hackatime';
+	import { getTrustLevelColor } from '$lib/utils';
 
 	let debounceTimer: number | null = null;
-	let cachedNames: Record<string, string> = {};
+	let cachedTypeHints: Record<string, {hint: string, trustLevel: number}> = {};
 	let hintText = '...';
+	let userTrustLevel = -1;
 
 	let userInput = '';
 
@@ -38,12 +40,14 @@
 					oninput={async () => {
 						if (userInput.trim() === '') {
 							hintText = '...';
+							userTrustLevel = -1;
 							return;
 						}
 
-						if (cachedNames[userInput]) {
-							const hint = cachedNames[userInput];
+						if (cachedTypeHints[userInput]) {
+							const { hint, trustLevel } = cachedTypeHints[userInput];
 							hintText = hint;
+							userTrustLevel = trustLevel;
 							return;
 						}
 
@@ -52,8 +56,9 @@
 						}
 
 						debounceTimer = setTimeout(async () => {
-							await userTypeHint(userInput, cachedNames).then((hint) => {
+							await userTypeHint(userInput, cachedTypeHints).then(({ hint, trustLevel }: { hint: string; trustLevel: number }) => {
 								hintText = hint;
+								userTrustLevel = trustLevel;
 							});
 						}, 500);
 					}}
@@ -63,6 +68,12 @@
 
 				<div class="mb-4 w-full max-w-xs">
 					<div class="rounded-lg border border-surface1 bg-base px-3 py-2 shadow-lg">
+						{#if userTrustLevel !== -1}
+							<span
+								class="mr-2 inline-block h-6 w-6 rounded-full border-2 border-surface2 align-middle"
+								style="background: var(--color-{getTrustLevelColor(userTrustLevel)});"
+							></span>
+						{/if}
 						<span class="text-sm text-text">{hintText}</span>
 					</div>
 				</div>

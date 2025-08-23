@@ -89,12 +89,11 @@ export async function getUserSpans(user: string | number): Promise<Spans> {
 
 export async function userTypeHint(
 	input: string,
-	cachedNames: Record<string, string>
-): Promise<string> {
-	if (cachedNames[input]) {
-		const hint = cachedNames[input];
-
-		return hint;
+	cachedTypeHints: Record<string, {hint: string, trustLevel: number}>
+): Promise<{hint: string, trustLevel: number}> {
+	if (cachedTypeHints[input]) {
+		const { hint, trustLevel } = cachedTypeHints[input];
+		return { hint, trustLevel };
 	} else {
 		const startDate = new Date('2030-01-01T00:00:00Z');
 		const endDate = new Date(startDate.getTime() + 1000); // 1 second later
@@ -103,13 +102,14 @@ export async function userTypeHint(
 		if (userStats) {
 			const username = userStats.data.username;
 			const hint = username ? `${username}` : '...';
-			cachedNames[input] = hint;
+			const trustLevel = userStats.trust_factor.trust_value || 0;
+			cachedTypeHints[input] = { hint, trustLevel };
 
-			return hint;
+			return { hint, trustLevel };
 		} else {
-			cachedNames[input] = 'User not found';
+			cachedTypeHints[input] = { hint: 'User not found', trustLevel: -1 };
 
-			return 'User not found';
+			return { hint: 'User not found', trustLevel: -1 };
 		}
 	}
 }
