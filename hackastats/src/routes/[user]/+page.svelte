@@ -481,6 +481,20 @@
 		return color || '#000000';
 	}
 
+	function changePage() {
+		if (browser) {
+			const userElement = document.getElementById('current-user');
+			if (userElement) {
+				const newUser = userElement.innerText.trim();
+				if (newUser && newUser !== user) {
+					window.location.href = `/${newUser}`;
+				} else {
+					userElement.innerText = user || '';
+				}
+			}
+		}
+	}
+
 	onMount(async () => {
 		if (!user) {
 			error = 'User parameter is missing';
@@ -530,7 +544,7 @@
 				<a href="/">Hacka<span class="text-pink">stats</span></a>
 			</h1>
 			<p class="text-subtext1">
-				Displaying data for user: <strong class="text-text">{user}</strong>
+				Displaying data for user: <span id="current-user" class="text-text px-1 rounded-lg border border-lavender bg-surface0" role="textbox" onblur={changePage} contenteditable>{user}</span>
 			</p>
 		</div>
 

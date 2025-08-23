@@ -32,7 +32,7 @@
 	function handleSearch() {
 		const trimmedInput = userInput.trim();
 		if (trimmedInput) {
-			window.location.href = `/data/${trimmedInput}`;
+			window.location.href = `/${trimmedInput}`;
 		}
 	}
 
