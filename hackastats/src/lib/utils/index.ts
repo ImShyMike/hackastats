@@ -18,3 +18,8 @@ export function humanTime(seconds: number): string {
 	}
 	return `${hrs}h ${mins}m`;
 }
+
+export function getMinutes(seconds: number): string {
+	const mins = Math.floor((seconds % 3600) / 60);
+	return mins.toString();
+}

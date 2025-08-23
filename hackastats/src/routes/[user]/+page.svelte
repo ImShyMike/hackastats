@@ -1,8 +1,9 @@
 <script lang="ts">
+	// @ts-expect-error
 	import { chart } from 'svelte-apexcharts?client';
 	import type { Stats, Spans } from '$lib/hackatime';
 	import { getUserStats, getUserSpans } from '$lib/hackatime';
-	import { humanTime, getTrustLevelColor } from '$lib/utils';
+	import { humanTime, getMinutes, getTrustLevelColor } from '$lib/utils';
 	import { parseSpansForHeatmap, createHeatmapSeries, splitSpanAcrossHours } from '$lib/parsing';
 	import { userTypeHint } from '$lib/hackatime';
 
@@ -15,9 +16,11 @@
 	let userElement: HTMLElement | null = null;
 	let stats: Stats | null = $state(null);
 	let spans: Spans | null = $state(null);
+	let projectsStats: Stats | null = $state(null);
 	let heatmapData: Array<{ date: string; value: number }> = $state([]);
 	let heatmapSeries: Array<{ name: string; data: Array<{ x: string; y: number }> }> = $state([]);
 	let chartData: number[] = $state(Array(24).fill(0));
+	let projectData: Array<{ name: string; total_seconds: number }> = $state([]);
 	let selectedDay: string | null = $state(null);
 
 	let loading = $state(true);
@@ -93,7 +96,7 @@
 						color: 'var(--color-crust)',
 						offsetY: 16,
 						formatter: function (val: string) {
-							return parseFloat(val).toFixed(1) + 'h';
+							return (Math.round(parseFloat(val) * 10) / 10).toFixed(1) + 'h';
 						}
 					},
 					total: {
@@ -106,7 +109,7 @@
 						color: 'var(--color-crust)',
 						formatter: function (w: any) {
 							const total = w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
-							return total.toFixed(1) + 'h';
+							return (Math.round(total * 10) / 10).toFixed(1) + 'h';
 						}
 					}
 				}
@@ -126,7 +129,7 @@
 				colors: ['var(--color-crust)']
 			},
 			formatter: function (val: number) {
-				return val.toFixed(1) + '%';
+				return (Math.round(val * 10) / 10).toFixed(1) + '%';
 			},
 			dropShadow: {
 				enabled: true,
@@ -146,7 +149,7 @@
 			custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
 				const value = series[seriesIndex];
 				const label = w.globals.labels[seriesIndex];
-				const hours = (value / 3600).toFixed(1);
+				const hours = (Math.round((value / 3600) * 10) / 10).toFixed(1);
 				const color = w.config.colors[seriesIndex];
 
 				return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
@@ -168,6 +171,166 @@
 					},
 					legend: {
 						position: 'bottom'
+					}
+				}
+			}
+		]
+	});
+
+	let projectChartOptions = $derived({
+		chart: {
+			type: 'bar',
+			height: 400,
+			width: '100%',
+			background: 'transparent',
+			foreColor: 'var(--color-text)',
+			fontFamily: 'inherit',
+			toolbar: {
+				show: false
+			}
+		},
+		colors: ['var(--color-lavender)'],
+		series: [
+			{
+				name: 'Hours',
+				data: projectData.map(p => p.total_seconds / 3600).slice(0, 10)
+			}
+		],
+		plotOptions: {
+			bar: {
+				horizontal: true,
+				columnWidth: '90%',
+				borderRadius: 4,
+				borderRadiusApplication: 'end',
+				borderRadiusWhenStacked: 'last'
+			}
+		},
+		dataLabels: {
+			enabled: true,
+			textAnchor: 'end',
+			offsetX: 20,
+			style: {
+				fontSize: '12px',
+				fontFamily: 'inherit',
+				fontWeight: 'bold',
+				colors: ['var(--color-base)']
+			},
+			formatter: function (val: number) {
+				return humanTime(val * 3600);
+			}
+		},
+		stroke: {
+			show: true,
+			width: 1,
+			colors: ['var(--color-surface1)']
+		},
+		xaxis: {
+			title: {
+				text: 'Hours',
+				style: {
+					color: 'var(--color-text)',
+					fontSize: '14px',
+					fontFamily: 'inherit',
+					fontWeight: 600
+				}
+			},
+			type: 'category',
+			categories: projectData.map(p => p.name).slice(0, 10),
+			labels: {
+				style: {
+					colors: 'var(--color-text)',
+					fontSize: '12px',
+					fontFamily: 'inherit'
+				},
+				rotate: 0
+			},
+			axisBorder: {
+				show: true,
+				color: 'var(--color-surface1)'
+			},
+			axisTicks: {
+				show: true,
+				color: 'var(--color-surface1)'
+			}
+		},
+		yaxis: {
+			title: {
+				text: 'Projects',
+				style: {
+					color: 'var(--color-text)',
+					fontSize: '14px',
+					fontFamily: 'inherit',
+					fontWeight: 600
+				},
+				offsetX: 10
+			},
+			labels: {
+				style: {
+					colors: 'var(--color-text)',
+					fontSize: '12px',
+					fontFamily: 'inherit'
+				}
+			}
+		},
+		grid: {
+			show: true,
+			borderColor: 'var(--color-surface1)',
+			strokeDashArray: 3,
+			position: 'back',
+			xaxis: {
+				lines: {
+					show: true
+				}
+			},
+			yaxis: {
+				lines: {
+					show: true
+				}
+			}
+		},
+		tooltip: {
+			theme: 'dark',
+			style: {
+				fontSize: '12px',
+				fontFamily: 'inherit'
+			},
+			custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
+				const value = series[seriesIndex][dataPointIndex];
+				const name = w.globals.labels[dataPointIndex];
+				const time = humanTime(value * 3600);
+
+				return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
+						<div style="margin-bottom: 4px;">
+							<strong style="color: var(--color-text);">${name}</strong>
+						</div>
+						<span style="color: var(--color-text);">${time}</span>
+					</div>`;
+			}
+		},
+		responsive: [
+			{
+				breakpoint: 768,
+				options: {
+					chart: {
+						height: 300
+					},
+					plotOptions: {
+						bar: {
+							columnWidth: '80%'
+						}
+					},
+				}
+			},
+			{
+				breakpoint: 480,
+				options: {
+					chart: {
+						height: 250
+					},
+					plotOptions: {
+						bar: {
+							columnWidth: '90%'
+						}
 					}
 				}
 			}
@@ -203,7 +366,17 @@
 			}
 		},
 		dataLabels: {
-			enabled: false
+			enabled: true,
+			style: {
+				fontSize: '12px',
+				fontFamily: 'inherit',
+				fontWeight: 'bold',
+				colors: ['var(--color-base)']
+			},
+			formatter: function (val: number) {
+				if (val === 0) return '';
+				return getMinutes(val * 3600);
+			}
 		},
 		stroke: {
 			show: true,
@@ -211,6 +384,16 @@
 			colors: ['var(--color-surface1)']
 		},
 		xaxis: {
+			title: {
+				text: 'Time of day',
+				style: {
+					color: 'var(--color-text)',
+					fontSize: '14px',
+					fontFamily: 'inherit',
+					fontWeight: 600
+				},
+				offsetX: 10
+			},
 			type: 'category',
 			categories: Array.from({ length: 24 }, (_, i) => (i + 1).toString()),
 			labels: {
@@ -247,7 +430,7 @@
 					fontFamily: 'inherit'
 				},
 				formatter: function (val: number) {
-					return (val * 60).toFixed() + 'm';
+					return humanTime(val * 3600);
 				}
 			},
 			max: 1
@@ -338,6 +521,9 @@
 
 					handleHeatmapClick(monthName, day, value);
 				}
+			},
+			toolbar: {
+				show: false
 			}
 		},
 		colors: ['var(--color-green)'],
@@ -511,9 +697,11 @@
 			tenYearsAgo.setFullYear(now.getFullYear() - 10);
 
 			const userData = await getUserStats(user, 10, 'languages', tenYearsAgo, now);
+			const userProjectsData = await getUserStats(user, 10, 'projects', tenYearsAgo, now);
 			const userSpans = await getUserSpans(user);
 			spans = userSpans;
 			stats = userData;
+			projectsStats = userProjectsData;
 
 			if (spans && spans.spans.length > 0) {
 				heatmapData = parseSpansForHeatmap(spans);
@@ -530,6 +718,10 @@
 
 			chartOptions.series = languageData.map((lang) => lang.total_seconds);
 			chartOptions.labels = languageData.map((lang) => lang.name);
+
+			projectData = projectsStats.data.projects
+				? Object.values(projectsStats.data.projects).sort((a, b) => b.total_seconds - a.total_seconds)
+				: [];
 
 			loading = false;
 		} catch (err) {
@@ -653,7 +845,7 @@
 				{:else}
 					<div class="flex h-96 items-center justify-center">
 						<div class="rounded-lg border border-surface1 bg-surface0/50 p-6">
-							<p class="text-subtext1">No data available to display.</p>
+							<p class="text-subtext1">No data available to display</p>
 						</div>
 					</div>
 				{/if}
@@ -663,12 +855,33 @@
 				<div class="mt-8 rounded-xl border border-surface1 bg-surface0/50 p-6 shadow-lg">
 					{#if loading}
 						<div class="flex h-96 flex-col items-center justify-center">
-							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue"></div>
+							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-green"></div>
+							<p class="text-subtext1">Loading project data...</p>
+						</div>
+					{:else if projectData.length === 0}
+						<div class="flex h-96 items-center justify-center">
+							<div class="rounded-lg border border-surface1 bg-surface0/50 p-6">
+								<p class="text-subtext1">No project data available to display</p>
+							</div>
+						</div>
+					{:else}
+						{#key projectChartOptions}
+							<div class="h-96 w-full overwrite-min-height" use:chart={projectChartOptions}></div>
+						{/key}
+					{/if}
+				</div>
+			{/if}
+
+			{#if !error}
+				<div class="mt-8 rounded-xl border border-surface1 bg-surface0/50 p-6 shadow-lg">
+					{#if loading}
+						<div class="flex h-96 flex-col items-center justify-center">
+							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-sky"></div>
 							<p class="text-subtext1">Loading heatmap data...</p>
 						</div>
 					{:else if heatmapSeries.length > 0}
 						<h3 class="mb-4 text-xl font-semibold text-text">Activity Heatmap</h3>
-						<div class="latte h-96 w-full" use:chart={heatmapOptions}></div>
+						<div class="h-96 w-full" use:chart={heatmapOptions}></div>
 					{/if}
 				</div>
 			{/if}
@@ -680,8 +893,8 @@
 				>
 					{#if loading}
 						<div class="flex h-96 flex-col items-center justify-center">
-							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue"></div>
-							<p class="text-subtext1">Loading data...</p>
+							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-mauve"></div>
+							<p class="text-subtext1">Loading daily data...</p>
 						</div>
 					{:else if selectedDay}
 						{#if chartData.reduce((a, b) => a + b, 0) === 0}
@@ -692,7 +905,7 @@
 						{:else}
 							<h3 class="mb-4 text-xl font-semibold text-text">{selectedDay}</h3>
 							{#key chartData}
-								<div class="latte h-96 w-full" use:chart={hourlyChartOptions}></div>
+								<div class="h-96 w-full overwrite-min-height" use:chart={hourlyChartOptions}></div>
 							{/key}
 						{/if}
 					{:else}
@@ -707,3 +920,10 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	/* this is probably an ApexCharts config but i can't find it */
+	.overwrite-min-height {
+		min-height: 400px !important;
+	}
+</style>
