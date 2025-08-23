@@ -850,11 +850,11 @@
 	}
 
 	function handleHeatmapClick(monthName: string, day: string, value: number) {
-		// Parse and display data for the selected day
-		parseDaySpecificData(monthName, day);
-
 		// Get projects for that day
 		getProjectsForDay(monthName, day);
+
+		// Parse and display data for the selected day
+		parseDaySpecificData(monthName, day);
 	}
 
 	function colorVarToHex(colorVar: string): string {
