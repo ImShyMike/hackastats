@@ -1,31 +1,9 @@
 <script lang="ts">
-	import { getUserStats } from '$lib/hackatime';
-	import type { Stats } from '$lib/hackatime';
+	import { userTypeHint } from '$lib/hackatime';
 
 	let debounceTimer: number | null = null;
 	let cachedNames: Record<string, string> = {};
 	let hintText = '...';
-
-	async function userTypeHint(input: string) {
-		if (cachedNames[input]) {
-			const hint = cachedNames[input];
-			hintText = hint;
-		} else {
-			const startDate = new Date('2030-01-01T00:00:00Z');
-			const endDate = new Date(startDate.getTime() + 1000); // 1 second later
-			const userStats: Stats | null = await getUserStats(input, 0, 'languages', startDate, endDate);
-
-			if (userStats) {
-				const username = userStats.data.username;
-				const hint = username ? `${username}` : '...';
-				hintText = hint;
-				cachedNames[input] = hint;
-			} else {
-				hintText = 'User not found';
-				cachedNames[input] = 'User not found';
-			}
-		}
-	}
 
 	let userInput = '';
 
@@ -74,7 +52,9 @@
 						}
 
 						debounceTimer = setTimeout(async () => {
-							await userTypeHint(userInput);
+							await userTypeHint(userInput, cachedNames).then((hint) => {
+								hintText = hint;
+							});
 						}, 500);
 					}}
 					placeholder="user/slack id here..."

@@ -4,6 +4,7 @@
 	import { getUserStats, getUserSpans } from '$lib/hackatime';
 	import { humanTime, getTrustLevelColor } from '$lib/utils';
 	import { parseSpansForHeatmap, createHeatmapSeries, splitSpanAcrossHours } from '$lib/parsing';
+	import { userTypeHint } from '$lib/hackatime';
 
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
@@ -11,6 +12,7 @@
 
 	const user = page.params.user;
 
+	let userElement: HTMLElement | null = null;
 	let stats: Stats | null = $state(null);
 	let spans: Spans | null = $state(null);
 	let heatmapData: Array<{ date: string; value: number }> = $state([]);
@@ -20,6 +22,10 @@
 
 	let loading = $state(true);
 	let error: string | null = $state(null);
+
+	let debounceTimer: number | null = null;
+	let cachedNames: Record<string, string> = {};
+	let hintText = $state('...');
 
 	const catppuccinColors = [
 		'var(--color-red)',
@@ -189,7 +195,7 @@
 		plotOptions: {
 			bar: {
 				horizontal: false,
-				columnWidth: '60%',
+				columnWidth: '90%',
 				borderRadius: 4,
 				borderRadiusApplication: 'end',
 				borderRadiusWhenStacked: 'last'
@@ -242,7 +248,8 @@
 				formatter: function (val: number) {
 					return (val * 60).toFixed() + 'm';
 				}
-			}
+			},
+			max: 1
 		},
 		grid: {
 			show: true,
@@ -482,15 +489,10 @@
 	}
 
 	function changePage() {
-		if (browser) {
-			const userElement = document.getElementById('current-user');
-			if (userElement) {
-				const newUser = userElement.innerText.trim();
-				if (newUser && newUser !== user) {
-					window.location.href = `/${newUser}`;
-				} else {
-					userElement.innerText = user || '';
-				}
+		if (browser && userElement) {
+			const newUser = userElement.innerText.trim();
+			if (newUser && newUser !== user) {
+				window.location.href = `/${newUser}`;
 			}
 		}
 	}
@@ -543,9 +545,58 @@
 			<h1 class="mb-2 text-3xl font-bold text-text">
 				<a href="/">Hacka<span class="text-pink">stats</span></a>
 			</h1>
+
 			<p class="text-subtext1">
-				Displaying data for user: <span id="current-user" class="text-text px-1 rounded-lg border border-lavender bg-surface0" role="textbox" onblur={changePage} contenteditable>{user}</span>
+				Displaying data for user: <span
+					id="current-user"
+					class="rounded-lg border border-lavender bg-surface0 px-1.5 py-0.5 text-text"
+					role="textbox"
+					onblur={() => {
+						hintText = '...';
+					}}
+					onkeypress={(e) => {
+						if (e.key === 'Enter') {
+							e.preventDefault();
+							changePage();
+						}
+					}}
+					tabindex="0"
+					oninput={async () => {
+						const userInput = userElement?.innerText || '';
+
+						if (userInput.trim() === '') {
+							hintText = '...';
+							return;
+						}
+
+						if (cachedNames[userInput]) {
+							const hint = cachedNames[userInput];
+							hintText = hint;
+							return;
+						}
+
+						if (debounceTimer !== null) {
+							clearTimeout(debounceTimer);
+						}
+
+						debounceTimer = setTimeout(async () => {
+							await userTypeHint(userInput, cachedNames).then((hint) => {
+								hintText = hint;
+							});
+						}, 500);
+					}}
+					contenteditable
+					bind:this={userElement}>{user}</span
+				>
 			</p>
+
+			{#if hintText !== '...'}
+				<div class="relative flex justify-center w-full" style="z-index:10;">
+					<div class="absolute left-1/2 -translate-x-1/2 top-0 w-max max-w-xs rounded-lg border border-surface1 bg-base px-3 py-2 shadow-lg">
+						<span class="text-sm text-text">{hintText}</span>
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		<div class="mx-auto max-w-4xl">

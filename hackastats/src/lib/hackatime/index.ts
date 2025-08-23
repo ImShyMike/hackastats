@@ -86,3 +86,30 @@ export async function getUserSpans(user: string | number): Promise<Spans> {
 	const url = `https://hackatime.hackclub.com/api/v1/users/${user}/heartbeats/spans`;
 	return (await getJson(url)) as Spans;
 }
+
+export async function userTypeHint(
+	input: string,
+	cachedNames: Record<string, string>
+): Promise<string> {
+	if (cachedNames[input]) {
+		const hint = cachedNames[input];
+
+		return hint;
+	} else {
+		const startDate = new Date('2030-01-01T00:00:00Z');
+		const endDate = new Date(startDate.getTime() + 1000); // 1 second later
+		const userStats: Stats | null = await getUserStats(input, 0, 'languages', startDate, endDate);
+
+		if (userStats) {
+			const username = userStats.data.username;
+			const hint = username ? `${username}` : '...';
+			cachedNames[input] = hint;
+
+			return hint;
+		} else {
+			cachedNames[input] = 'User not found';
+
+			return 'User not found';
+		}
+	}
+}
