@@ -20,6 +20,11 @@ export function humanTime(seconds: number): string {
 }
 
 export function getMinutes(seconds: number): string {
+	if (seconds === 0) {
+		return '0';
+	} else if (seconds >= 3600) {
+		return '60';
+	}
 	const mins = Math.floor((seconds % 3600) / 60);
 	return mins.toString();
 }

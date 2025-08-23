@@ -21,6 +21,7 @@
 	let heatmapSeries: Array<{ name: string; data: Array<{ x: string; y: number }> }> = $state([]);
 	let chartData: number[] = $state(Array(24).fill(0));
 	let projectData: Array<{ name: string; total_seconds: number }> = $state([]);
+	let dailyProjectData: Array<{ name: string; total_seconds: number }> = $state([]);
 	let selectedDay: string | null = $state(null);
 
 	let loading = $state({ pieChart: true, projectChart: true, heatmap: true });
@@ -48,7 +49,7 @@
 		'var(--color-maroon)'
 	];
 
-	let chartOptions = $derived({
+	let pieChartOptions = $derived({
 		chart: {
 			type: 'pie',
 			height: 400,
@@ -189,7 +190,7 @@
 				show: false
 			}
 		},
-		colors: ['var(--color-lavender)'],
+		colors: ['var(--color-mauve)'],
 		series: [
 			{
 				name: 'Hours',
@@ -301,7 +302,7 @@
 
 				return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
 						<div style="margin-bottom: 4px;">
-							<strong style="color: var(--color-text);">${name}</strong>
+							<strong style="color: var(--color-text);">${escapeHtml(name)}</strong>
 						</div>
 						<span style="color: var(--color-text);">${time}</span>
 					</div>`;
@@ -618,6 +619,198 @@
 		}
 	});
 
+	let dailyProjectChartOptions = $derived({
+		chart: {
+			type: 'bar',
+			height: 400,
+			width: '100%',
+			background: 'transparent',
+			foreColor: 'var(--color-text)',
+			fontFamily: 'inherit',
+			toolbar: {
+				show: false
+			}
+		},
+		colors: ['var(--color-maroon)'],
+		series: [
+			{
+				name: 'Time',
+				data: dailyProjectData.map((p) => p.total_seconds / 3600).slice(0, 10)
+			}
+		],
+		plotOptions: {
+			bar: {
+				horizontal: true,
+				columnWidth: '90%',
+				borderRadius: 4,
+				borderRadiusApplication: 'end',
+				borderRadiusWhenStacked: 'last'
+			}
+		},
+		dataLabels: {
+			enabled: true,
+			textAnchor: 'end',
+			offsetX: 20,
+			style: {
+				fontSize: '12px',
+				fontFamily: 'inherit',
+				fontWeight: 'bold',
+				colors: ['var(--color-base)']
+			},
+			formatter: function (val: number) {
+				return humanTime(val * 3600);
+			}
+		},
+		stroke: {
+			show: true,
+			width: 1,
+			colors: ['var(--color-surface1)']
+		},
+		xaxis: {
+			title: {
+				text: 'Hours',
+				style: {
+					color: 'var(--color-text)',
+					fontSize: '14px',
+					fontFamily: 'inherit',
+					fontWeight: 600
+				}
+			},
+			type: 'category',
+			categories: dailyProjectData.map((p) => p.name).slice(0, 10),
+			labels: {
+				style: {
+					colors: 'var(--color-text)',
+					fontSize: '12px',
+					fontFamily: 'inherit'
+				},
+				rotate: 0
+			},
+			axisBorder: {
+				show: true,
+				color: 'var(--color-surface1)'
+			},
+			axisTicks: {
+				show: true,
+				color: 'var(--color-surface1)'
+			}
+		},
+		yaxis: {
+			title: {
+				text: 'Projects',
+				style: {
+					color: 'var(--color-text)',
+					fontSize: '14px',
+					fontFamily: 'inherit',
+					fontWeight: 600
+				},
+				offsetX: 10
+			},
+			labels: {
+				style: {
+					colors: 'var(--color-text)',
+					fontSize: '12px',
+					fontFamily: 'inherit'
+				}
+			}
+		},
+		grid: {
+			show: true,
+			borderColor: 'var(--color-surface1)',
+			strokeDashArray: 3,
+			position: 'back',
+			xaxis: {
+				lines: {
+					show: true
+				}
+			},
+			yaxis: {
+				lines: {
+					show: true
+				}
+			}
+		},
+		tooltip: {
+			theme: 'dark',
+			style: {
+				fontSize: '12px',
+				fontFamily: 'inherit'
+			},
+			custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
+				const value = series[seriesIndex][dataPointIndex];
+				const name = w.globals.labels[dataPointIndex];
+				const time = humanTime(value * 3600);
+
+				return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
+						<div style="margin-bottom: 4px;">
+							<strong style="color: var(--color-text);">${escapeHtml(name)}</strong>
+						</div>
+						<span style="color: var(--color-text);">${time}</span>
+					</div>`;
+			}
+		},
+		responsive: [
+			{
+				breakpoint: 768,
+				options: {
+					chart: {
+						height: 300
+					},
+					plotOptions: {
+						bar: {
+							columnWidth: '80%'
+						}
+					}
+				}
+			},
+			{
+				breakpoint: 480,
+				options: {
+					chart: {
+						height: 250
+					},
+					plotOptions: {
+						bar: {
+							columnWidth: '90%'
+						}
+					}
+				}
+			}
+		]
+	});
+
+	function escapeHtml(text: string) {
+		const map: Record<string, string> = {
+			'&': '&amp;',
+			'<': '&lt;',
+			'>': '&gt;',
+			'"': '&quot;',
+			"'": '&#039;'
+		};
+		return text.replace(/[&<>"']/g, function (m) {
+			return map[m];
+		});
+	}
+
+	async function getProjectsForDay(monthName: string, day: string) {
+		if (!user) return;
+
+		// Get date object for the start of the day
+		const [monthAbbr, year] = monthName.split(' ');
+		const startDate = new Date(`${monthAbbr} ${day}, ${year} 00:00:00`);
+		const endDate = new Date(`${monthAbbr} ${day}, ${year} 23:59:59`);
+
+		getUserStats(user, 10, 'projects', startDate, endDate).then((data) => {
+			console.log('Projects for day data:', data);
+			if (data?.data?.projects) {
+				dailyProjectData = Object.values(data.data.projects).sort(
+					(a, b) => b.total_seconds - a.total_seconds
+				);
+			} else {
+				dailyProjectData = [];
+			}
+		});
+	}
 	function handleHeatmapClick(monthName: string, day: string, value: number) {
 		selectedDay = `${monthName}, Day ${day}`;
 
@@ -654,7 +847,10 @@
 
 		chartData = hourlyDurations;
 
-		// Scroll to the graph
+		// Get projects for that day
+		getProjectsForDay(monthName, day);
+
+		// Scroll to the graphs
 		if (browser) {
 			setTimeout(() => {
 				window.scrollTo({
@@ -697,8 +893,8 @@
 
 			const languageData = Object.values(stats.data.languages);
 
-			chartOptions.series = languageData.map((lang) => lang.total_seconds);
-			chartOptions.labels = languageData.map((lang) => lang.name);
+			pieChartOptions.series = languageData.map((lang) => lang.total_seconds);
+			pieChartOptions.labels = languageData.map((lang) => lang.name);
 		} catch (err) {
 			console.error('Error fetching user stats:', err);
 			error = `Failed to fetch data for user: ${user}`;
@@ -866,7 +1062,7 @@
 
 				{#if loading.pieChart}
 					<div class="flex h-96 flex-col items-center justify-center">
-						<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue"></div>
+						<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-yellow"></div>
 						<p class="text-subtext1">Loading chart data...</p>
 					</div>
 				{:else if error}
@@ -875,8 +1071,8 @@
 							<p class="font-semibold text-red">Error: {error}</p>
 						</div>
 					</div>
-				{:else if chartOptions.series.length > 0}
-					<div class="h-96 w-full" use:chart={chartOptions}></div>
+				{:else if pieChartOptions.series.length > 0}
+					<div class="h-96 w-full" use:chart={pieChartOptions}></div>
 				{:else}
 					<div class="flex h-96 items-center justify-center">
 						<div class="rounded-lg border border-surface1 bg-surface0/50 p-6">
@@ -890,7 +1086,7 @@
 				<div class="mt-8 rounded-xl border border-surface1 bg-surface0/50 p-6 shadow-lg">
 					{#if loading.projectChart}
 						<div class="flex h-96 flex-col items-center justify-center">
-							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-green"></div>
+							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-mauve"></div>
 							<p class="text-subtext1">Loading project data...</p>
 						</div>
 					{:else if projectData.length === 0}
@@ -924,29 +1120,31 @@
 			{#if !error}
 				<div
 					class="mt-8 rounded-xl border border-surface1 bg-surface0/50 p-6 shadow-lg"
-					style="min-height: 500px;"
+					style="min-height: 896px;"
 				>
 					{#if loading.heatmap}
-						<div class="flex h-96 flex-col items-center justify-center">
-							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-mauve"></div>
+						<div class="flex h-192 flex-col items-center justify-center">
+							<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue"></div>
 							<p class="text-subtext1">Loading daily data...</p>
 						</div>
 					{:else if selectedDay}
 						{#if chartData.reduce((a, b) => a + b, 0) === 0}
 							<h3 class="mb-4 text-xl font-semibold text-text">{selectedDay}</h3>
-							<div class="flex h-96 items-center justify-center">
+							<div class="flex h-192 items-center justify-center">
 								<p class="text-subtext1">No data available to display for this day</p>
 							</div>
 						{:else}
 							<h3 class="mb-4 text-xl font-semibold text-text">{selectedDay}</h3>
 							{#key chartData}
 								<div class="overwrite-min-height h-96 w-full" use:chart={hourlyChartOptions}></div>
+
+								<div class="overwrite-min-height h-96 w-full" use:chart={dailyProjectChartOptions}></div>
 							{/key}
 						{/if}
 					{:else}
-						<div class="flex h-96 items-center justify-center">
+						<div class="flex h-192 items-center justify-center">
 							<p class="text-subtext1">
-								Click on a day in the heatmap above to view hourly activity
+								Click on a day in the heatmap above to view daily activity
 							</p>
 						</div>
 					{/if}
