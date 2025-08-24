@@ -1,4 +1,4 @@
-# hackastats
+# [hackastats](https://hackastats.pages.dev)
 
 An easy to use Hackatime stats viewer.
 
