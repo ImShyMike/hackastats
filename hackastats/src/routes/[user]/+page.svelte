@@ -23,6 +23,7 @@
 	let projectData: Array<{ name: string; total_seconds: number }> = $state([]);
 	let dailyProjectData: Array<{ name: string; total_seconds: number }> = $state([]);
 	let selectedDay: string | null = $state(null);
+	let choosenDay: string | null = $state(null);
 
 	let loading = $state({ pieChart: true, projectChart: true, heatmap: true });
 	let error: string | null = $state(null);
@@ -968,7 +969,7 @@
 		tenYearsAgo.setFullYear(now.getFullYear() - 10);
 
 		const urlParams = new URLSearchParams(window.location.search);
-		const choosenDay = urlParams.get('day');
+		choosenDay = urlParams.get('day');
 
 		loadPieChart(user, tenYearsAgo, now);
 		loadProjectChart(user, tenYearsAgo, now);
@@ -978,11 +979,11 @@
 
 <svelte:head>
 	<title>Hackastats - {user}</title>
-	<meta name="description" content="Hackatime stats for user {user}." />
+	<meta name="description" content="Hackatime stats for user {user}{choosenDay ? ` on ${choosenDay}` : ""}." />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 
 	<meta property="og:title" content="Hackastats - {user}" />
-	<meta property="og:description" content="Hackatime stats for user {user}." />
+	<meta property="og:description" content="Hackatime stats for user {user}{choosenDay ? ` on ${choosenDay}` : ""}." />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://hackastats.pages.dev/" />
 	<meta property="og:image" content="https://hackastats.pages.dev/hackastats.png" />
@@ -990,7 +991,7 @@
 
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content="Hackastats - {user}" />
-	<meta name="twitter:description" content="Hackatime stats for user {user}." />
+	<meta name="twitter:description" content="Hackatime stats for user {user}{choosenDay ? ` on ${choosenDay}` : ""}." />
 	<meta name="twitter:image" content="https://hackastats.pages.dev/hackastats.png" />
 	<meta name="twitter:image:alt" content="Hackastats Logo" />
 </svelte:head>
