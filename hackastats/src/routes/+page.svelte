@@ -22,6 +22,25 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Hackastats</title>
+	<meta name="description" content="An easy to use Hackatime stats viewer." />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+	<meta property="og:title" content="Hackastats" />
+	<meta property="og:description" content="An easy to use Hackatime stats viewer." />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://hackastats.pages.dev/" />
+	<meta property="og:image" content="https://hackastats.pages.dev/hackastats.png" />
+	<meta property="og:image:alt" content="Hackastats Logo" />
+
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="Hackastats" />
+	<meta name="twitter:description" content="An easy to use Hackatime stats viewer." />
+	<meta name="twitter:image" content="https://hackastats.pages.dev/hackastats.png" />
+	<meta name="twitter:image:alt" content="Hackastats Logo" />
+</svelte:head>
+
 <div class="flex min-h-screen flex-col items-center justify-around bg-base text-text">
 	<div class="mt-8 rounded-xl border border-surface1 bg-surface0/50 px-20 py-10 shadow-lg">
 		<div class="mb-8 text-center">

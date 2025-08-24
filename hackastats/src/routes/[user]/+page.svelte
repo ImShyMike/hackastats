@@ -976,6 +976,25 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Hackastats - {user}</title>
+	<meta name="description" content="Hackatime stats for user {user}." />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+	<meta property="og:title" content="Hackastats - {user}" />
+	<meta property="og:description" content="Hackatime stats for user {user}." />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://hackastats.pages.dev/" />
+	<meta property="og:image" content="https://hackastats.pages.dev/hackastats.png" />
+	<meta property="og:image:alt" content="Hackastats Logo" />
+
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:title" content="Hackastats - {user}" />
+	<meta name="twitter:description" content="Hackatime stats for user {user}." />
+	<meta name="twitter:image" content="https://hackastats.pages.dev/hackastats.png" />
+	<meta name="twitter:image:alt" content="Hackastats Logo" />
+</svelte:head>
+
 <div class="min-h-screen bg-base text-text">
 	<div class="container mx-auto px-4 py-8">
 		<div class="mb-8 text-center">
