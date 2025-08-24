@@ -801,7 +801,6 @@
 		const endDate = new Date(`${monthAbbr} ${day}, ${year} 23:59:59`);
 
 		getUserStats(user, 10, 'projects', startDate, endDate).then((data) => {
-			console.log('Projects for day data:', data);
 			if (data?.data?.projects) {
 				dailyProjectData = Object.values(data.data.projects).sort(
 					(a, b) => b.total_seconds - a.total_seconds
