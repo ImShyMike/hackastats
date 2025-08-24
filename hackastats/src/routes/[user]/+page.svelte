@@ -377,6 +377,7 @@
 		},
 		xaxis: {
 			type: 'category',
+			categories: Array.from({ length: 31 }, (_, i) => (i + 1).toString()),
 			labels: {
 				style: {
 					colors: 'var(--color-text)',
@@ -399,21 +400,14 @@
 				fontFamily: 'inherit'
 			},
 			custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
-				const value = series[seriesIndex][dataPointIndex];
+				const value = series[seriesIndex][dataPointIndex] || 0;
 				const monthName = w.globals.seriesNames[seriesIndex];
-				const day = w.globals.labels[dataPointIndex];
+				const day = dataPointIndex + 1;
 				const time = humanTime(value);
-
-				if (value === 0 || value === null || value === undefined) {
-					return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
-							<strong style="color: var(--color-text);">${monthName}, Day ${day}</strong><br/>
-							<span style="color: var(--color-subtext1);">No activity</span>
-						</div>`;
-				}
 
 				return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
 						<strong style="color: var(--color-text);">${monthName}, Day ${day}</strong><br/>
-						<span style="color: var(--color-text);">${time}</span>
+						<span style="color: var(--color-text);">${value === 0 ? "No activity" : time}</span>
 					</div>`;
 			}
 		},
@@ -866,7 +860,7 @@
 			const languageData = Object.values(stats.data.languages);
 
 			pieChartOptions.series = languageData.map((lang) => lang.total_seconds);
-			pieChartOptions.labels = languageData.map((lang) => lang.name);
+			pieChartOptions.labels = languageData.map((lang) => escapeHtml(lang.name));
 		} catch (err) {
 			console.error('Error fetching user stats:', err);
 			error = `Failed to fetch data for user: ${user}`;
