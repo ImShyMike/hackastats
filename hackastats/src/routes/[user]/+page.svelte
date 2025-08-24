@@ -307,35 +307,120 @@
 						<span style="color: var(--color-text);">${time}</span>
 					</div>`;
 			}
-		},
-		responsive: [
-			{
-				breakpoint: 768,
-				options: {
-					chart: {
-						height: 300
-					},
-					plotOptions: {
-						bar: {
-							columnWidth: '80%'
-						}
-					}
+		}
+	});
+
+	let heatmapOptions = $derived({
+		chart: {
+			type: 'heatmap',
+			height: 400,
+			background: 'transparent',
+			fontFamily: 'inherit',
+			events: {
+				dataPointSelection: function (event: any, chartContext: any, config: any) {
+					const { seriesIndex, dataPointIndex } = config;
+					const monthName = heatmapSeries[seriesIndex]?.name;
+					const dayData = heatmapSeries[seriesIndex]?.data[dataPointIndex];
+					const day = dayData?.x;
+					const value = dayData?.y;
+
+					handleHeatmapClick(monthName, day, value);
 				}
 			},
-			{
-				breakpoint: 480,
-				options: {
-					chart: {
-						height: 250
-					},
-					plotOptions: {
-						bar: {
-							columnWidth: '90%'
-						}
-					}
+			toolbar: {
+				show: false
+			}
+		},
+		colors: ['var(--color-green)'],
+		series: heatmapSeries,
+		dataLabels: {
+			enabled: false
+		},
+		stroke: {
+			show: true,
+			width: 1,
+			colors: ['var(--color-crust)']
+		},
+		plotOptions: {
+			heatmap: {
+				shadeIntensity: 0.25,
+				radius: 0,
+				reverseNegativeShade: true,
+				useFillColorAsStroke: false,
+				colorScale: {
+					ranges: [
+						{ from: 0.0, to: 1, color: colorVarToHex('--color-surface0'), name: 'No Activity' },
+						{
+							from: 1,
+							to: 0.5 * 3600,
+							color: colorVarToHex('--color-teal'),
+							name: 'Low'
+						},
+						{
+							from: 0.5 * 3600,
+							to: 2 * 3600,
+							color: colorVarToHex('--color-green'),
+							name: 'Medium'
+						},
+						{ from: 2 * 3600, to: 4 * 3600, color: colorVarToHex('--color-yellow'), name: 'High' },
+						{
+							from: 4 * 3600,
+							to: 8 * 3600,
+							color: colorVarToHex('--color-peach'),
+							name: 'Very High'
+						},
+						{ from: 8 * 3600, to: 24 * 3600, color: colorVarToHex('--color-red'), name: 'Extreme' }
+					]
 				}
 			}
-		]
+		},
+		xaxis: {
+			type: 'category',
+			labels: {
+				style: {
+					colors: 'var(--color-text)',
+					fontSize: '12px'
+				}
+			}
+		},
+		yaxis: {
+			labels: {
+				style: {
+					colors: 'var(--color-text)',
+					fontSize: '12px'
+				}
+			}
+		},
+		tooltip: {
+			theme: 'dark',
+			style: {
+				fontSize: '12px',
+				fontFamily: 'inherit'
+			},
+			custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
+				const value = series[seriesIndex][dataPointIndex];
+				const monthName = w.globals.seriesNames[seriesIndex];
+				const day = w.globals.labels[dataPointIndex];
+				const time = humanTime(value);
+
+				if (value === 0 || value === null || value === undefined) {
+					return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
+							<strong style="color: var(--color-text);">${monthName}, Day ${day}</strong><br/>
+							<span style="color: var(--color-subtext1);">No activity</span>
+						</div>`;
+				}
+
+				return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
+						<strong style="color: var(--color-text);">${monthName}, Day ${day}</strong><br/>
+						<span style="color: var(--color-text);">${time}</span>
+					</div>`;
+			}
+		},
+		legend: {
+			labels: {
+				colors: 'var(--color-text)'
+			}
+		}
 	});
 
 	let hourlyChartOptions = $derived.by(() => ({
@@ -473,151 +558,64 @@
 		},
 		responsive: [
 			{
-				breakpoint: 768,
+				breakpoint: 480,
 				options: {
-					chart: {
-						height: 300
+					dataLabels: {
+						style: {
+							fontSize: '8px'
+						}
 					},
 					plotOptions: {
 						bar: {
-							columnWidth: '80%'
+							horizontal: true
 						}
 					},
 					xaxis: {
+						title: {
+							text: 'Hours',
+							style: {
+								color: 'var(--color-text)',
+								fontSize: '14px',
+								fontFamily: 'inherit',
+								fontWeight: 600
+							}
+						},
 						labels: {
-							rotate: -90
+							formatter: function (val: number) {
+								return humanTime(val * 3600);
+							},
+							style: {
+								colors: 'var(--color-text)',
+								fontSize: '10px',
+								fontFamily: 'inherit'
+							}
 						}
-					}
-				}
-			},
-			{
-				breakpoint: 480,
-				options: {
-					chart: {
-						height: 250
 					},
-					plotOptions: {
-						bar: {
-							columnWidth: '90%'
+					yaxis: {
+						title: {
+							text: 'Time of day',
+							style: {
+								color: 'var(--color-text)',
+								fontSize: '14px',
+								fontFamily: 'inherit',
+								fontWeight: 600
+							}
+						},
+						labels: {
+							formatter: function (val: any) {
+								return val.toString();
+							},
+							style: {
+								colors: 'var(--color-text)',
+								fontSize: '10px',
+								fontFamily: 'inherit'
+							}
 						}
 					}
 				}
 			}
 		]
 	}));
-
-	let heatmapOptions = $derived({
-		chart: {
-			type: 'heatmap',
-			height: 400,
-			background: 'transparent',
-			fontFamily: 'inherit',
-			events: {
-				dataPointSelection: function (event: any, chartContext: any, config: any) {
-					const { seriesIndex, dataPointIndex } = config;
-					const monthName = heatmapSeries[seriesIndex]?.name;
-					const dayData = heatmapSeries[seriesIndex]?.data[dataPointIndex];
-					const day = dayData?.x;
-					const value = dayData?.y;
-
-					handleHeatmapClick(monthName, day, value);
-				}
-			},
-			toolbar: {
-				show: false
-			}
-		},
-		colors: ['var(--color-green)'],
-		series: heatmapSeries,
-		dataLabels: {
-			enabled: false
-		},
-		stroke: {
-			show: true,
-			width: 1,
-			colors: ['var(--color-crust)']
-		},
-		plotOptions: {
-			heatmap: {
-				shadeIntensity: 0.25,
-				radius: 0,
-				reverseNegativeShade: true,
-				useFillColorAsStroke: false,
-				colorScale: {
-					ranges: [
-						{ from: 0.0, to: 1, color: colorVarToHex('--color-surface0'), name: 'No Activity' },
-						{
-							from: 1,
-							to: 0.5 * 3600,
-							color: colorVarToHex('--color-teal'),
-							name: 'Low'
-						},
-						{
-							from: 0.5 * 3600,
-							to: 2 * 3600,
-							color: colorVarToHex('--color-green'),
-							name: 'Medium'
-						},
-						{ from: 2 * 3600, to: 4 * 3600, color: colorVarToHex('--color-yellow'), name: 'High' },
-						{
-							from: 4 * 3600,
-							to: 8 * 3600,
-							color: colorVarToHex('--color-peach'),
-							name: 'Very High'
-						},
-						{ from: 8 * 3600, to: 24 * 3600, color: colorVarToHex('--color-red'), name: 'Extreme' }
-					]
-				}
-			}
-		},
-		xaxis: {
-			type: 'category',
-			labels: {
-				style: {
-					colors: 'var(--color-text)',
-					fontSize: '12px'
-				}
-			}
-		},
-		yaxis: {
-			labels: {
-				style: {
-					colors: 'var(--color-text)',
-					fontSize: '12px'
-				}
-			}
-		},
-		tooltip: {
-			theme: 'dark',
-			style: {
-				fontSize: '12px',
-				fontFamily: 'inherit'
-			},
-			custom: function ({ series, seriesIndex, dataPointIndex, w }: any) {
-				const value = series[seriesIndex][dataPointIndex];
-				const monthName = w.globals.seriesNames[seriesIndex];
-				const day = w.globals.labels[dataPointIndex];
-				const time = humanTime(value);
-
-				if (value === 0 || value === null || value === undefined) {
-					return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
-							<strong style="color: var(--color-text);">${monthName}, Day ${day}</strong><br/>
-							<span style="color: var(--color-subtext1);">No activity</span>
-						</div>`;
-				}
-
-				return `<div style="padding: 8px; background: var(--color-surface0); border: 1px solid var(--color-surface1); border-radius: 4px;">
-						<strong style="color: var(--color-text);">${monthName}, Day ${day}</strong><br/>
-						<span style="color: var(--color-text);">${time}</span>
-					</div>`;
-			}
-		},
-		legend: {
-			labels: {
-				colors: 'var(--color-text)'
-			}
-		}
-	});
 
 	let dailyProjectChartOptions = $derived({
 		chart: {
@@ -748,35 +746,7 @@
 						<span style="color: var(--color-text);">${time}</span>
 					</div>`;
 			}
-		},
-		responsive: [
-			{
-				breakpoint: 768,
-				options: {
-					chart: {
-						height: 300
-					},
-					plotOptions: {
-						bar: {
-							columnWidth: '80%'
-						}
-					}
-				}
-			},
-			{
-				breakpoint: 480,
-				options: {
-					chart: {
-						height: 250
-					},
-					plotOptions: {
-						bar: {
-							columnWidth: '90%'
-						}
-					}
-				}
-			}
-		]
+		}
 	});
 
 	function escapeHtml(text: string) {
@@ -1167,7 +1137,7 @@
 			{#if !error}
 				<div
 					class="mt-8 rounded-xl border border-surface1 bg-surface0/50 p-6 shadow-lg"
-					style="min-height: 896px;"
+					style="min-height: 880px;"
 				>
 					{#if loading.heatmap}
 						<div class="flex h-192 flex-col items-center justify-center">
