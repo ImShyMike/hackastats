@@ -815,6 +815,12 @@
 	async function parseDaySpecificData(monthName: string, day: string) {
 		selectedDay = `${monthName}, Day ${day}`;
 
+		if (browser) {
+			const url = new URL(window.location.href);
+			url.searchParams.set('day', getSelectedDateString());
+			window.history.replaceState({}, '', url.toString());
+		}
+
 		const daySpans =
 			spans?.spans.filter((span) => {
 				const spanDate = new Date(span.start_time * 1000);
@@ -917,7 +923,7 @@
 		}
 	}
 
-	async function loadSpans(user: string) {
+	async function loadSpans(user: string, choosenDay?: Date) {
 		try {
 			const userSpans = await getUserSpans(user);
 			spans = userSpans;
@@ -927,12 +933,55 @@
 				heatmapSeries = createHeatmapSeries(heatmapData);
 			} else {
 				error = `No span data found for user: ${user}`;
+				return;
+			}
+
+			// If a specific day is chosen via URL, parse and display its data after loading spans
+			if (choosenDay) {
+				const monthName = choosenDay.toLocaleDateString('en-US', { month: 'short' });
+				const dayOfMonth = choosenDay.getDate().toString();
+				selectedDay = `${monthName}, Day ${dayOfMonth}`;
+				getProjectsForDay(`${monthName} ${choosenDay.getFullYear()}`, dayOfMonth);
+				parseDaySpecificData(`${monthName} ${choosenDay.getFullYear()}`, dayOfMonth);
+
+				// Scroll to the bottom of the page
+				if (browser) {
+					setTimeout(() => {
+						window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+					}, 100);
+				}
 			}
 		} catch (err) {
 			console.error('Error fetching user spans:', err);
 			error = `Failed to fetch spans for user: ${user}`;
 		} finally {
 			loading.heatmap = false;
+		}
+	}
+
+	function getSelectedDateString() {
+		if (!selectedDay) return '';
+
+		const [monthName, day] = selectedDay.split(', Day ');
+		const date = new Date(`${day}, ${monthName}`);
+
+		return `${date.getFullYear()}-${(date.getMonth() + 1)
+			.toString()
+			.padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+	}
+
+	function copyUrlToClipboard(event: Event) {
+		event.preventDefault();
+		if (browser) {
+			const url = new URL(window.location.href);
+			navigator.clipboard.writeText(url.toString()).then(
+				() => {
+					alert('URL copied to clipboard!');
+				},
+				(err) => {
+					console.error('Could not copy text: ', err);
+				}
+			);
 		}
 	}
 
@@ -949,9 +998,12 @@
 		const tenYearsAgo = new Date();
 		tenYearsAgo.setFullYear(now.getFullYear() - 10);
 
+		const urlParams = new URLSearchParams(window.location.search);
+		const choosenDay = urlParams.get('day');
+
 		loadPieChart(user, tenYearsAgo, now);
 		loadProjectChart(user, tenYearsAgo, now);
-		loadSpans(user);
+		loadSpans(user, choosenDay ? new Date(choosenDay) : undefined);
 	});
 </script>
 
@@ -1130,7 +1182,21 @@
 								<p class="text-subtext1">No data available to display for this day</p>
 							</div>
 						{:else}
-							<h3 class="mb-4 text-xl font-semibold text-text">{selectedDay}</h3>
+							<div class="flex w-full items-center justify-between">
+								<h3 class="text-xl font-semibold text-text">{selectedDay}</h3>
+								<a onclick={copyUrlToClipboard} href="/{user}?day={getSelectedDateString()}"
+									><svg
+										xmlns="http://www.w3.org/2000/svg"
+										width="32"
+										height="32"
+										viewBox="0 0 24 24"
+										><!-- Icon from Material Symbols by Google - https://github.com/google/material-design-icons/blob/master/LICENSE --><path
+											fill="currentColor"
+											d="M11 17H7q-2.075 0-3.537-1.463T2 12t1.463-3.537T7 7h4v2H7q-1.25 0-2.125.875T4 12t.875 2.125T7 15h4zm-3-4v-2h8v2zm5 4v-2h4q1.25 0 2.125-.875T20 12t-.875-2.125T17 9h-4V7h4q2.075 0 3.538 1.463T22 12t-1.463 3.538T17 17z"
+										/></svg
+									></a
+								>
+							</div>
 							{#key chartData}
 								<div class="overwrite-min-height h-96 w-full" use:chart={hourlyChartOptions}></div>
 
