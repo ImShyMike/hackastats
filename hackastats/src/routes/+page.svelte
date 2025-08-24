@@ -47,6 +47,7 @@
 			<h1 class="mb-2 text-3xl font-bold text-text">
 				<a href="/">Hacka<span class="text-pink">stats</span></a>
 			</h1>
+			<p class="text-text/80">Easy to use <a class="text-lavender/80 hover:underline" href="https://hackatime.hackclub.com" target="_blank" rel="noopener noreferrer">Hackatime</a> stats viewer.</p>
 		</div>
 
 		<div class="mx-auto max-w-4xl">
