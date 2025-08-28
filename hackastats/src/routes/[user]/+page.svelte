@@ -339,13 +339,13 @@
 		},
 		stroke: {
 			show: true,
-			width: 1,
-			colors: ['var(--color-crust)']
+			width: 2,
+			colors: ['var(--color-base)']
 		},
 		plotOptions: {
 			heatmap: {
 				shadeIntensity: 0.25,
-				radius: 0,
+				radius: 2,
 				reverseNegativeShade: true,
 				useFillColorAsStroke: false,
 				colorScale: {
